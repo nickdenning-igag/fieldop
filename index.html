@@ -1417,7 +1417,7 @@ function resetData() {
   if (!confirm('Reset to sample projects and clear all assignments?')) return;
   projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
   people = [];
-  nextId = DEFAULT_PROJECTS.length + 1;
+  nextId = 4
   saveState();
   renderAll();
   toast('Reset to defaults');
