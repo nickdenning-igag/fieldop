@@ -810,6 +810,154 @@ input[type="range"]::-webkit-slider-thumb:hover {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/topojson/3.0.2/topojson.min.js"></script>
 <script>
+'use strict';
+
+/******************************
+ * STORAGE & DEFAULT DATA
+ ******************************/
+const STORAGE_KEYS = {
+  projects: 'fieldops_projects_v1',
+  people:  'fieldops_people_v1',
+  nextId:  'fieldops_nextId_v1'
+};
+
+const DEFAULT_PROJECTS = [
+  {id:1,name:'Riverway Bridge Deck',desc:'Structural deck pour with high-strength mix design.',location:'Denver, CO',startDate:'2026-03-10',endDate:'2026-05-20',projectedStart:'Sometime in March',skillMin:3,positions:['Lead Field Technician'],personality:['Takes Initiative','Works Independently'],skills:['Cylinder Making','Compressive Strength','ACI Field Grade I'],color:'#f5a623',members:[]},
+  {id:2,name:'Southgate Foundation',desc:'Large mat foundation pour across multiple pours.',location:'Austin, TX',startDate:'2026-04-01',endDate:'2026-06-15',projectedStart:'Early April',skillMin:2,positions:['Field Technician','Lead Field Technician'],personality:['Team Player','Follows Direction','Eager to Learn'],skills:['Slump Testing','Air Content','Field Sampling'],color:'#2dd4a0',members:[]},
+  {id:3,name:'Quarry QC Program',desc:'Aggregate gradation and source qualification testing.',location:'Atlanta, GA',startDate:'2026-05-05',endDate:'2026-08-30',projectedStart:'Q2 2026',skillMin:4,positions:['Lead Field Technician'],personality:['Self-Starter','Highly Motivated'],skills:['Sieve Analysis','ACI Aggregate Testing','ACI Strength Testing','Mix Design Review'],color:'#5b8df5',members:[]},
+];
+
+let projects = [];
+let people = [];
+let nextId = DEFAULT_PROJECTS.length + 1;
+
+/******************************
+ * SAVE / LOAD
+ ******************************/
+function saveState() {
+  localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(projects));
+  localStorage.setItem(STORAGE_KEYS.people, JSON.stringify(people));
+  localStorage.setItem(STORAGE_KEYS.nextId, String(nextId));
+}
+
+function loadState() {
+  try {
+    const p = JSON.parse(localStorage.getItem(STORAGE_KEYS.projects) || 'null');
+    const pe = JSON.parse(localStorage.getItem(STORAGE_KEYS.people) || 'null');
+    const n = parseInt(localStorage.getItem(STORAGE_KEYS.nextId), 10);
+
+    projects = Array.isArray(p) && p.length ? p : structuredClone(DEFAULT_PROJECTS);
+    people   = Array.isArray(pe) ? pe : [];
+    nextId   = Number.isInteger(n) ? n : DEFAULT_PROJECTS.length + 1;
+
+  } catch (err) {
+    console.error('Storage error — reset defaults:', err);
+    projects = structuredClone(DEFAULT_PROJECTS);
+    people = [];
+    nextId = DEFAULT_PROJECTS.length + 1;
+  }
+}
+
+/******************************
+ * HOOK INTO UI BEHAVIOR
+ ******************************/
+window.addEventListener('beforeunload', saveState);
+
+loadState();  // initialize state on load
+
+/******************************
+ * OVERRIDES OF EXISTING FUNCTIONS
+ *  — now all mutate *then* save
+ ******************************/
+function addProject() {
+  const name = document.getElementById('p-name').value.trim();
+  if (!name) { toast('Enter a project name', false); return; }
+
+  const proj = {
+    id: nextId++, name,
+    desc: document.getElementById('p-desc').value.trim() || 'No description.',
+    location: document.getElementById('p-location').value.trim(),
+    startDate: document.getElementById('p-start').value,
+    endDate: document.getElementById('p-end').value,
+    projectedStart: document.getElementById('p-projected').value.trim(),
+    skillMin: +document.getElementById('p-skill').value,
+    positions: getSel('p-positions'),
+    personality: getSel('p-personality'),
+    skills: [...getSel('p-skills'), ...getSel('p-skills-aci')],
+    color: COLORS[(nextId - 2) % COLORS.length],
+    members: []
+  };
+  projects.push(proj);
+
+  saveState();  // ✔ save now
+  renderAll();
+  toast(`"${name}" added to deployment board`);
+  document.querySelectorAll('.tab')[0].click();
+}
+
+function deleteProject(id) {
+  projects = projects.filter(p => p.id !== id);
+  people = people.filter(p => p.projectId !== id);
+  saveState();
+  renderAll();
+  toast('Project removed');
+}
+
+function saveEdit() {
+  const p = projects.find(pr => pr.id === editingId);
+  if (!p) return;
+  p.name = document.getElementById('edit-name').value.trim() || p.name;
+  p.desc = document.getElementById('edit-desc').value.trim() || p.desc;
+  p.location = document.getElementById('edit-location').value.trim();
+  p.startDate = document.getElementById('edit-start').value;
+  p.endDate = document.getElementById('edit-end').value;
+  p.projectedStart = document.getElementById('edit-projected').value.trim();
+  people.filter(per => per.projectId === editingId).forEach(per => per.projectName = p.name);
+
+  saveState();
+  renderAll();
+  closeModal();
+  toast('Project updated');
+}
+
+function assignPerson(person, projId) {
+  const proj = projects.find(p => p.id === projId);
+  if (!proj) return;
+  if (people.find(p => p.name === person.name && p.projectId === projId)) {
+    toast(`${person.name} already on ${proj.name}`, false);
+    return;
+  }
+  people = people.filter(p => p.name !== person.name);
+  projects.forEach(pr => { pr.members = pr.members.filter(m => m !== person.name); });
+
+  proj.members.push(person.name);
+  people.push({
+    ...person,
+    projectId: projId,
+    projectName: proj.name,
+    color: proj.color
+  });
+
+  saveState();
+  renderAll();
+  toast(`${person.name} deployed to ${proj.name}`);
+}
+
+function resetData() {
+  if (!confirm('Reset to sample projects and clear all assignments?')) return;
+  projects = structuredClone(DEFAULT_PROJECTS);
+  people = [];
+  nextId = DEFAULT_PROJECTS.length + 1;
+
+  saveState();
+  renderAll();
+  toast('Reset to defaults');
+}
+
+/******************************
+ * INITIAL RENDER
+ ******************************/
+renderAll();
 const COLORS = ['#f5a623','#2dd4a0','#5b8df5','#e84393','#a78bfa','#fb923c','#34d399','#f43f5e'];
 
 function parseState(loc) {
