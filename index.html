@@ -1417,12 +1417,12 @@ function resetData() {
   if (!confirm('Reset to sample projects and clear all assignments?')) return;
   projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
   people = [];
-  nextId = 4;
+  nextId = DEFAULT_PROJECTS.length + 1;
   saveState();
   renderAll();
   toast('Reset to defaults');
 }
-
+  
 function toast(msg, ok=true) {
   const t=document.getElementById('toast');
   t.style.borderLeft=`3px solid ${ok?'var(--green)':'var(--red)'}`;
@@ -1433,12 +1433,17 @@ function toast(msg, ok=true) {
   setTimeout(()=>t.classList.remove('show'),3200);
 }
 
-renderAll();
+window.addEventListener('beforeunload', saveState);
 
 // Initialize slider label text
 ['r-skill','p-skill'].forEach(id => {
   const el = document.getElementById(id);
   if (el) updateSlider(el);
+});
+
+// 🔑 THIS IS THE KEY PART
+loadState();
+renderAll();
 });
 </script>
 </body>
