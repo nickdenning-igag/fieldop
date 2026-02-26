@@ -530,6 +530,7 @@ input[type="range"]::-webkit-slider-thumb:hover {
     </div>
     <div class="header-right">
       <div class="status-pill"><div class="status-dot"></div>System Active</div>
+      <button onclick="resetData()" style="padding:7px 14px;background:var(--surface);border:1.5px solid var(--border);border-radius:100px;font-family:'Share Tech Mono',monospace;font-size:0.59rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);cursor:pointer;transition:all 0.2s;box-shadow:var(--shadow-xs);" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red-bdr)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">↺ Reset</button>
       <div class="header-stat">
         <div class="header-stat-num" id="h-proj">3</div>
         <div class="header-stat-label">Active Projects</div>
@@ -833,14 +834,40 @@ function fmtDateShort(d) {
   return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]+' '+parseInt(day);
 }
 
-let projects = [
+const DEFAULT_PROJECTS = [
   {id:1,name:'Riverway Bridge Deck',desc:'Structural deck pour with high-strength mix design.',location:'Denver, CO',startDate:'2026-03-10',endDate:'2026-05-20',projectedStart:'Sometime in March',skillMin:3,positions:['Lead Field Technician'],personality:['Takes Initiative','Works Independently'],skills:['Cylinder Making','Compressive Strength','ACI Field Grade I'],color:COLORS[0],members:[]},
   {id:2,name:'Southgate Foundation',desc:'Large mat foundation pour across multiple pours.',location:'Austin, TX',startDate:'2026-04-01',endDate:'2026-06-15',projectedStart:'Early April',skillMin:2,positions:['Field Technician','Lead Field Technician'],personality:['Team Player','Follows Direction','Eager to Learn'],skills:['Slump Testing','Air Content','Field Sampling'],color:COLORS[1],members:[]},
   {id:3,name:'Quarry QC Program',desc:'Aggregate gradation and source qualification testing.',location:'Atlanta, GA',startDate:'2026-05-05',endDate:'2026-08-30',projectedStart:'Q2 2026',skillMin:4,positions:['Lead Field Technician'],personality:['Self-Starter','Highly Motivated'],skills:['Sieve Analysis','ACI Aggregate Testing','ACI Strength Testing','Mix Design Review'],color:COLORS[2],members:[]},
 ];
+
+// ── PERSISTENCE ──────────────────────────────────────────────
+function saveState() {
+  try {
+    localStorage.setItem('fieldops_projects', JSON.stringify(projects));
+    localStorage.setItem('fieldops_people',   JSON.stringify(people));
+    localStorage.setItem('fieldops_nextId',   String(nextId));
+  } catch(e) {}
+}
+function loadState() {
+  try {
+    const p = localStorage.getItem('fieldops_projects');
+    const pe = localStorage.getItem('fieldops_people');
+    const n = localStorage.getItem('fieldops_nextId');
+    if (p)  projects = JSON.parse(p);
+    if (pe) people   = JSON.parse(pe);
+    if (n)  nextId   = parseInt(n) || 4;
+  } catch(e) {
+    projects = DEFAULT_PROJECTS;
+    people   = [];
+    nextId   = 4;
+  }
+}
+
+let projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
 let people = [];
 let nextId = 4;
 let editingId = null;
+loadState();
 
 // Tabs
 document.querySelectorAll('.tab').forEach(tab => {
@@ -877,6 +904,7 @@ function addProject() {
     members: []
   };
   projects.push(proj);
+  saveState();
   ['p-name','p-desc','p-location','p-start','p-end','p-projected'].forEach(id => document.getElementById(id).value='');
   document.getElementById('p-skill').value = 2;
   document.getElementById('p-skill-val').textContent = 'Helping Out';
@@ -949,6 +977,7 @@ function assignPerson(person, projId) {
   projects.forEach(pr=>{pr.members=pr.members.filter(m=>m!==person.name);});
   proj.members.push(person.name);
   people.push({...person,projectId:projId,projectName:proj.name,color:proj.color});
+  saveState();
   renderAll();
   toast(`${person.name} deployed to ${proj.name}`);
 }
@@ -1205,6 +1234,7 @@ function moveTT(e) {
 function deleteProject(id) {
   projects=projects.filter(p=>p.id!==id);
   people=people.filter(p=>p.projectId!==id);
+  saveState();
   renderAll(); toast('Project removed');
 }
 
@@ -1229,10 +1259,21 @@ function saveEdit(){
   p.endDate=document.getElementById('edit-end').value;
   p.projectedStart=document.getElementById('edit-projected').value.trim();
   people.filter(per=>per.projectId===editingId).forEach(per=>per.projectName=p.name);
+  saveState();
   renderAll(); closeModal(); toast('Project updated');
 }
 
 document.getElementById('edit-modal').addEventListener('click',e=>{ if(e.target===document.getElementById('edit-modal')) closeModal(); });
+
+function resetData() {
+  if (!confirm('Reset to sample projects and clear all assignments?')) return;
+  projects = JSON.parse(JSON.stringify(DEFAULT_PROJECTS));
+  people = [];
+  nextId = 4;
+  saveState();
+  renderAll();
+  toast('Reset to defaults');
+}
 
 function toast(msg, ok=true) {
   const t=document.getElementById('toast');
