@@ -1,3 +1,189 @@
+/***********************
+ * STORAGE + DEFAULTS
+ ***********************/
+const STORAGE_KEYS = {
+  projects: 'fieldops_projects_v1',
+  people: 'fieldops_people_v1',
+  nextId: 'fieldops_nextId_v1'
+};
+
+const DEFAULT_PROJECTS = [
+  { id: 1, name: 'Project A', crew: [], status: 'open' },
+  { id: 2, name: 'Project B', crew: [], status: 'open' },
+  { id: 3, name: 'Project C', crew: [], status: 'open' }
+];
+
+let projects = [];
+let people = [];
+let nextId = 4;
+
+/***********************
+ * STATE MANAGEMENT
+ ***********************/
+function saveState() {
+  localStorage.setItem(STORAGE_KEYS.projects, JSON.stringify(projects));
+  localStorage.setItem(STORAGE_KEYS.people, JSON.stringify(people));
+  localStorage.setItem(STORAGE_KEYS.nextId, String(nextId));
+}
+
+function loadState() {
+  try {
+    const storedProjects = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.projects) || 'null'
+    );
+    const storedPeople = JSON.parse(
+      localStorage.getItem(STORAGE_KEYS.people) || 'null'
+    );
+    const storedNextId = parseInt(
+      localStorage.getItem(STORAGE_KEYS.nextId),
+      10
+    );
+
+    projects = Array.isArray(storedProjects) && storedProjects.length
+      ? storedProjects
+      : structuredClone(DEFAULT_PROJECTS);
+
+    people = Array.isArray(storedPeople)
+      ? storedPeople
+      : [];
+
+    nextId = Number.isInteger(storedNextId)
+      ? storedNextId
+      : DEFAULT_PROJECTS.length + 1;
+
+  } catch (err) {
+    console.error('LocalStorage corrupted, resetting', err);
+    projects = structuredClone(DEFAULT_PROJECTS);
+    people = [];
+    nextId = DEFAULT_PROJECTS.length + 1;
+    saveState();
+  }
+}
+
+/***********************
+ * PROJECT FUNCTIONS
+ ***********************/
+function addProject(name) {
+  if (!name) return;
+
+  projects.push({
+    id: nextId++,
+    name,
+    crew: [],
+    status: 'open'
+  });
+
+  saveState();
+  renderProjects();
+}
+
+function deleteProject(id) {
+  projects = projects.filter(p => p.id !== id);
+  saveState();
+  renderProjects();
+}
+
+function saveEdit(id, newName) {
+  const project = projects.find(p => p.id === id);
+  if (!project || !newName) return;
+
+  project.name = newName;
+  saveState();
+  renderProjects();
+}
+
+/***********************
+ * PEOPLE FUNCTIONS
+ ***********************/
+function routePerson(person) {
+  if (!person?.name) return;
+
+  people.push({
+    id: Date.now(),
+    ...person
+  });
+
+  saveState();
+  renderPeople();
+}
+
+function assignPerson(personId, projectId) {
+  const person = people.find(p => p.id === personId);
+  const project = projects.find(p => p.id === projectId);
+  if (!person || !project) return;
+
+  project.crew.push(person);
+  people = people.filter(p => p.id !== personId);
+
+  saveState();
+  renderProjects();
+  renderPeople();
+}
+
+/***********************
+ * RESET
+ ***********************/
+function resetData() {
+  if (!confirm('This will reset all data. Continue?')) return;
+
+  projects = structuredClone(DEFAULT_PROJECTS);
+  people = [];
+  nextId = DEFAULT_PROJECTS.length + 1;
+
+  saveState();
+  renderProjects();
+  renderPeople();
+}
+
+/***********************
+ * RENDERING
+ ***********************/
+function renderProjects() {
+  const container = document.getElementById('projects');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  projects.forEach(project => {
+    const div = document.createElement('div');
+    div.className = 'project';
+
+    div.innerHTML = `
+      <h3>${project.name}</h3>
+      <ul>
+        ${project.crew.map(c => `<li>${c.name}</li>`).join('')}
+      </ul>
+      <button onclick="deleteProject(${project.id})">Delete</button>
+    `;
+
+    container.appendChild(div);
+  });
+}
+
+function renderPeople() {
+  const container = document.getElementById('people');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  people.forEach(person => {
+    const div = document.createElement('div');
+    div.className = 'person';
+    div.textContent = person.name;
+    container.appendChild(div);
+  });
+}
+
+/***********************
+ * INIT
+ ***********************/
+window.addEventListener('beforeunload', saveState);
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadState();
+  renderProjects();
+  renderPeople();
+});
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -7,7 +193,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&family=Barlow+Semi+Condensed:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 :root {
   --bg:        #f2f5fb;
   --surface:   #ffffff;
