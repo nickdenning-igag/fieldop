@@ -982,12 +982,6 @@ function fmtDateShort(d) {
   return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]+' '+parseInt(day);
 }
 
-const DEFAULT_PROJECTS = [
-  {id:1,name:'Riverway Bridge Deck',desc:'Structural deck pour with high-strength mix design.',location:'Denver, CO',startDate:'2026-03-10',endDate:'2026-05-20',projectedStart:'Sometime in March',skillMin:3,positions:['Lead Field Technician'],personality:['Takes Initiative','Works Independently'],skills:['Cylinder Making','Compressive Strength','ACI Field Grade I'],color:COLORS[0],members:[]},
-  {id:2,name:'Southgate Foundation',desc:'Large mat foundation pour across multiple pours.',location:'Austin, TX',startDate:'2026-04-01',endDate:'2026-06-15',projectedStart:'Early April',skillMin:2,positions:['Field Technician','Lead Field Technician'],personality:['Team Player','Follows Direction','Eager to Learn'],skills:['Slump Testing','Air Content','Field Sampling'],color:COLORS[1],members:[]},
-  {id:3,name:'Quarry QC Program',desc:'Aggregate gradation and source qualification testing.',location:'Atlanta, GA',startDate:'2026-05-05',endDate:'2026-08-30',projectedStart:'Q2 2026',skillMin:4,positions:['Lead Field Technician'],personality:['Self-Starter','Highly Motivated'],skills:['Sieve Analysis','ACI Aggregate Testing','ACI Strength Testing','Mix Design Review'],color:COLORS[2],members:[]},
-];
-
 // ── PERSISTENCE ──────────────────────────────────────────────
 function saveState() {
   try {
