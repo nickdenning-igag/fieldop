@@ -1346,6 +1346,7 @@ function drawPins() {
   });
 }
 
+if (d3Projection) drawPins();
 function renderMap() {
   const legend = document.getElementById('map-legend');
   if (!projects.length) {
@@ -1356,7 +1357,6 @@ function renderMap() {
   legend.innerHTML = projects.map(p =>
     `<div class="legend-item"><div class="legend-dot" style="background:${p.color}"></div>${p.name}</div>`
   ).join('');
-  if (d3Projection) drawPins();
 }
 
 function moveTT(e) {
